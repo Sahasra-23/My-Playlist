@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music Playlist Organizer</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+  <style>
+    body {
+      padding-top: 70px;
+      background-color: #000;
+      color: #fff;
+    }
+    .card-img-top { height: 180px; object-fit: cover; }
+    .tracklist-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .tracklist-item button { margin-left: 10px; }
+    .badge-genre { font-size: 0.85rem; }
+    .playlist-card { cursor: pointer; }
+    .card { background-color: #111; border: 1px solid rgba(255,255,255,0.06); color: #fff; }
+    .form-control, .custom-select { background-color: #111; color: #fff; border: 1px solid rgba(255,255,255,0.08); }
+    .alert { color: #000; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <a class="navbar-brand" href="#">🎵 MyPlaylists</a>
+  </nav>
+
+  <div class="container mt-4" id="mainView">
+    <div class="row mb-3">
+      <div class="col-md-3"><input type="text" id="searchBar" class="form-control" placeholder="Search playlists or songs..." /></div>
+      <div class="col-md-3">
+        <select id="genreFilter" class="form-control">
+          <option value="">Genre</option>
+          <option>Pop</option><option>Rock</option><option>Hip-Hop</option><option>EDM</option>
+          <option>Jazz</option><option>Classical</option><option>R&B</option><option>Country</option>
+          <option>Reggae</option><option>Blues</option><option>Metal</option><option>Indie</option>
+          <option>K-Pop</option><option>Latin</option><option>Folk</option><option>Gospel</option>
+          <option>Techno</option><option>House</option><option>Trap</option><option>Bollywood</option>
+          <option>Soundtrack</option><option>Afrobeat</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select id="artistFilter" class="form-control">
+          <option value="">Artist</option>
+          <option>Taylor Swift</option><option>Drake</option><option>Billie Eilish</option><option>Ed Sheeran</option>
+          <option>Bad Bunny</option><option>Coldplay</option><option>Arijit Singh</option><option>Adele</option>
+          <option>Beethoven</option><option>Daft Punk</option><option>BTS</option><option>Shakira</option>
+          <option>Bob Marley</option><option>John Mayer</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select id="durationFilter" class="form-control">
+          <option value="">Duration</option>
+          <option value="short">0–30 min</option>
+          <option value="medium">30–60 min</option>
+          <option value="long">60+ min</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row" id="playlistGrid"></div>
+    <div id="noResults" class="alert alert-warning d-none">No songs or playlists found. Try again!</div>
+  </div>
+
+  <div class="container mt-4 d-none" id="detailsView">
+    <a href="#" id="backBtn" class="btn btn-secondary mb-3">← Back to Playlists</a>
+    <div id="playlistDetails"></div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script>
+    // Helper to convert mm:ss to seconds. Accepts "m:ss" or "mm:ss".
+    function toSeconds(time) {
+      if (!time || typeof time !== 'string') return 0;
+      const parts = time.split(":").map(Number);
+      const m = parts[0] || 0;
+      const s = parts[1] || 0;
+      return m * 60 + s;
+    }
+    // Format seconds to mm:ss (if >= 60 minutes, shows mm:ss where mm can be > 60)
+    function toMMSS(sec) {
+      sec = Math.max(0, Math.floor(Number(sec) || 0));
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return m + ":" + (s < 10 ? "0" + s : s);
+    }
+
+    // Utility to generate 20 sample tracks for a given genre
+    function generateTracks(genre, artistSeed) {
+      const tracks = [];
+      for (let i = 1; i <= 20; i++) {
+        const mins = 2 + Math.floor(Math.random() * 4); // 2-5 minutes
+        const secs = 20 + Math.floor(Math.random() * 40); // 20-59 seconds
+        const dur = `${mins}:${secs < 10 ? '0' + secs : secs}`;
+        tracks.push({ title: `${genre} Track ${i}`, artist: `${artistSeed} ${i}`, duration: dur });
+      }
+      return tracks;
+    }
+
+    // Create playlists with generated tracks
+    const playlists = [
+      { id: 1, title: "Pop Vibes", genre: "Pop", artist: "Various", description: "Feel-good pop hits", cover: "https://cdn.pixabay.com/photo/2018/05/13/16/19/saxophone-3397023_1280.jpg", tracks: generateTracks('Pop','PopStar') },
+      { id: 2, title: "Rock Anthems", genre: "Rock", artist: "Various", description: "Guitar-driven rock songs", cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRXpbNpkbnFQUuv138dZmFzCiUAbZ97bC1New&s", tracks: generateTracks('Rock','RockBand') },
+      { id: 3, title: "Hip-Hop Heat", genre: "Hip-Hop", artist: "Various", description: "Beats and bars", cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQXRM4w7TA0HP_eSAlqT1_N56fNY32QWEMYw&s", tracks: generateTracks('Hip-Hop','MC') },
+      { id: 4, title: "EDM Pulse", genre: "EDM", artist: "Various", description: "Festival-ready electronic tracks", cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRRRzvMenDg04cYuj__g8M4m-Yrojbh8w71QQ&s", tracks: generateTracks('EDM','DJ') },
+      { id: 5, title: "Smooth Jazz", genre: "Jazz", artist: "Various", description: "Late-night jazz grooves", cover: "https://media.istockphoto.com/id/108309713/photo/saxophonist-at-sunset.jpg?s=612x612&w=0&k=20&c=ShsTlMkJSYOFApGVgI5SxdY1tHvjW3TRca0yR4Y23jk=", tracks: generateTracks('Jazz','JazzArtist') },
+      { id: 6, title: "Classical Calm", genre: "Classical", artist: "Various", description: "Orchestral and piano pieces", cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS18ctnTSElCb1LtgIejBqy7SDdHS1HkLByRA&s", tracks: generateTracks('Classical','Composer') },
+      { id: 7, title: "R&B Grooves", genre: "R&B", artist: "Various", description: "Smooth R&B tracks", cover: "https://t3.ftcdn.net/jpg/00/56/61/16/360_F_56611607_HIIGom8r7o1uMIHJeS19y04twIeFaV4h.jpg", tracks: generateTracks('R&B','RBSinger') },
+      { id: 8, title: "Country Roads", genre: "Country", artist: "Various", description: "Heartfelt country songs", cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiimXRVwqftni5dX7xjXas6ciieVaHkVinwg&s", tracks: generateTracks('Country','CountryArtist') },
+      { id: 9, title: "Reggae Roots", genre: "Reggae", artist: "Various", description: "Laid-back reggae vibes", cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRS9vAIOPGMbd2Un0AnoVFMSu9Gy9ZDZCntqw&s", tracks: generateTracks('Reggae','ReggaeArtist') },
+      { id: 10, title: "Blues Nights", genre: "Blues", artist: "Various", description: "Soulful blues tracks", cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQGLw6C6ApNO9pgHCTtd4fBUVLtaY8USUjlXw&s", tracks: generateTracks('Blues','BluesArtist') },
+      { id: 11, title: "Metal Fury", genre: "Metal", artist: "Various", description: "Heavy metal anthems", cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSy_p8yxDeO0LcprlJQsekiYlJarlTXR2Rdmg&s", tracks: generateTracks('Metal','MetalBand') },
+      { id: 12, title: "Indie Gems", genre: "Indie", artist: "Various", description: "Hidden indie favorites", cover: "https://img.freepik.com/free-photo/3d-music-related-scene_23-2151125158.jpg?semt=ais_incoming&w=740&q=80", tracks: generateTracks('Indie','IndieArtist') },
+      { id: 13, title: "K-Pop Hits", genre: "K-Pop", artist: "Various", description: "Catchy K-Pop tracks", cover: "https://wallpapercat.com/w/full/0/4/8/180083-3840x2160-desktop-4k-k-pop-background-image.jpg", tracks: generateTracks('K-Pop','KStar') },
+      { id: 14, title: "Latin Fiesta", genre: "Latin", artist: "Various", description: "Danceable Latin rhythms", cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxD1RDZn6uts9Ht9c6_fxDTs508-HKTmz9Pw&s", tracks: generateTracks('Latin','LatinStar') },
+      { id: 15, title: "Folk Stories", genre: "Folk", artist: "Various", description: "Acoustic and storytelling songs", cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQe15vca9k-HPCe7ETeiVT4Fv-GcpI4L-csWQ&s", tracks: generateTracks('Folk','FolkSinger') },
+      { id: 16, title: "Gospel Praise", genre: "Gospel", artist: "Various", description: "Inspirational gospel tracks", cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRbCxN7fmjVbVzB74jHOXyM_r_wnKOP0pVyfg&s", tracks: generateTracks('Gospel','Choir') },
+      { id: 17, title: "Techno Drive", genre: "Techno", artist: "Various", description: "Driving techno beats", cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRPxVkjUqiEhVueOkmXTVr9ekjFJhcAd-2TIA&s", tracks: generateTracks('Techno','TechnoDJ') },
+      { id: 18, title: "House Party", genre: "House", artist: "Various", description: "Groovy house music", cover: "https://img.freepik.com/free-vector/colorful-music-speaker-with-sound-notes_1017-32862.jpg?semt=ais_hybrid&w=740&q=80", tracks: generateTracks('House','HouseDJ') },
+      { id: 19, title: "Trap Mode", genre: "Trap", artist: "Various", description: "Hard-hitting trap beats", cover: "https://d1csarkz8obe9u.cloudfront.net/posterpreviews/simple-album-cover-music-art-trap-mixtape-rap-design-template-b7f3a5e9bea6b933acf170c69538fa4a_screen.jpg?ts=1663011787", tracks: generateTracks('Trap','TrapArtist') },
+      { id: 20, title: "Bollywood Beats", genre: "Bollywood", artist: "Various", description: "Popular Bollywood songs", cover: "https://i.pinimg.com/736x/29/1d/aa/291daab86e5b36d806381740c8a0dbe3.jpg", tracks: generateTracks('Bollywood','PlaybackSinger') },
+      { id: 21, title: "Soundtracks & Scores", genre: "Soundtrack", artist: "Various", description: "Film and game scores", cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS3d5RqWTb6JDBZjCHXPqBydkm9kWvL6tJI5g&s", tracks: generateTracks('Soundtrack','Composer') },
+      { id: 22, title: "Afrobeat Vibes", genre: "Afrobeat", artist: "Various", description: "Afrobeat rhythms and melodies", cover: "https://www.shutterstock.com/image-vector/afro-beat-text-african-drums-260nw-1741803605.jpg", tracks: generateTracks('Afrobeat','AfroArtist') }
+    ];
+
+    // Precompute total durations in seconds for each playlist
+    playlists.forEach(p => {
+      p.totalSeconds = p.tracks.reduce((acc, t) => acc + toSeconds(t.duration), 0);
+      p.totalDuration = toMMSS(p.totalSeconds);
+    });
+
+    let currentPlaylistId = null;
+
+    function renderPlaylists(data) {
+      $("#playlistGrid").empty();
+      data.forEach(p => {
+        $("#playlistGrid").append(`
+          <div class="col-md-4 mb-4">
+            <div class="card playlist-card" data-id="${p.id}">
+              <img src="${p.cover}" class="card-img-top" alt="${p.title}" />
+              <div class="card-body">
+                <h5 class="card-title">${p.title} <span class="badge badge-secondary badge-genre">${p.genre}</span></h5>
+                <p class="card-text">${p.description}</p>
+                <p class="mb-0"><small>Total: ${p.totalDuration} • ${p.tracks.length} songs</small></p>
+              </div>
+            </div>
+          </div>
+        `);
+      });
+    }
+
+    function showDetails(id) {
+      const playlist = playlists.find(p => p.id == id);
+      if (!playlist) return;
+      currentPlaylistId = playlist.id;
+
+      $("#mainView").addClass("d-none");
+      $("#detailsView").removeClass("d-none");
+
+      // Build tracklist HTML with indexes and data attributes
+      const trackHTML = playlist.tracks.map((t, i) => `
+        <div class="tracklist-item" data-index="${i}">
+          <div><strong>${t.title}</strong> – ${t.artist} (${t.duration})</div>
+          <div>
+            <button class="btn btn-sm btn-success play-btn">▶</button>
+            <button class="btn btn-sm btn-warning edit-btn">✎</button>
+            <button class="btn btn-sm btn-danger remove-btn">🗑</button>
+          </div>
+        </div>
+      `).join('');
+
+      $("#playlistDetails").html(`
+        <div class="card">
+          <div class="card-body">
+            <h2 id="detailsTitle">${playlist.title} <small class="text-muted">• ${playlist.genre}</small></h2>
+            <p>${playlist.description}</p>
+            <img src="${playlist.cover}" class="img-fluid mb-3" alt="${playlist.title}" />
+            <p><strong>Total duration:</strong> ${playlist.totalDuration} • <strong>Songs:</strong> ${playlist.tracks.length}</p>
+            <div class="tracklist">${trackHTML}</div>
+          </div>
+        </div>
+      `);
+    }
+
+    $(document).ready(function () {
+      renderPlaylists(playlists);
+
+      // Search & filters
+      $("#searchBar, #genreFilter, #artistFilter, #durationFilter").on("input change", function () {
+        const search = $("#searchBar").val().toLowerCase().trim();
+        const genre = $("#genreFilter").val();
+        const artist = $("#artistFilter").val();
+        const duration = $("#durationFilter").val();
+
+        const filtered = playlists.filter(p => {
+          const matchesPlaylist = (!search || p.title.toLowerCase().includes(search));
+          const matchesSong = (!search || p.tracks.some(t => t.title.toLowerCase().includes(search) || t.artist.toLowerCase().includes(search)));
+
+          let matchesDuration = true;
+          if (duration === "short") matchesDuration = p.totalSeconds <= 1800;
+          if (duration === "medium") matchesDuration = p.totalSeconds > 1800 && p.totalSeconds <= 3600;
+          if (duration === "long") matchesDuration = p.totalSeconds > 3600;
+
+          let matchesArtist = true;
+          if (artist) {
+            matchesArtist = p.tracks.some(t => t.artist === artist) || p.artist === artist;
+          }
+
+          return (matchesPlaylist || matchesSong) && (!genre || p.genre === genre) && matchesArtist && matchesDuration;
+        });
+
+        if (filtered.length > 0) {
+          $("#noResults").addClass("d-none");
+          renderPlaylists(filtered);
+        } else {
+          $("#playlistGrid").empty();
+          $("#noResults").removeClass("d-none");
+        }
+      });
+
+      // Open playlist details
+      $(document).on("click", ".playlist-card", function (e) {
+        const id = $(this).data("id");
+        showDetails(id);
+      });
+
+      // Back button
+      $("#backBtn").click(function (e) {
+        e.preventDefault();
+        $("#detailsView").addClass("d-none");
+        $("#mainView").removeClass("d-none");
+        currentPlaylistId = null;
+      });
+
+      // Remove track
+      $(document).on("click", ".remove-btn", function (e) {
+        const idx = $(this).closest('.tracklist-item').data('index');
+        if (currentPlaylistId == null) return;
+        const pl = playlists.find(p => p.id === currentPlaylistId);
+        if (!pl) return;
+        if (typeof idx !== 'undefined' && idx >= 0 && idx < pl.tracks.length) {
+          pl.tracks.splice(idx, 1);
+          pl.totalSeconds = pl.tracks.reduce((acc, t) => acc + toSeconds(t.duration), 0);
+          pl.totalDuration = toMMSS(pl.totalSeconds);
+          // re-render details so indexes and totals update
+          showDetails(currentPlaylistId);
+        }
+      });
+
+      // Edit / Play placeholders
+      $(document).on("click", ".edit-btn", function (e) {
+        e.stopPropagation();
+        alert("Edit functionality coming soon!");
+      });
+
+      $(document).on("click", ".play-btn", function (e) {
+        e.stopPropagation();
+        alert("Playing song...");
+      });
+    });
+  </script>
+</body>
+</html>
